@@ -1,0 +1,47 @@
+version: '3.4'
+services: 
+
+  nginx:
+    build:
+      dockerfile: ./docker/nginx.Dockerfile
+      context: .
+    image: raelamorim/nginx
+    container_name: nginx
+    ports: 
+      - "80:80"
+    networks: 
+      - prod
+    depends_on:
+      - app1
+      - redis
+
+  redis:
+    image: redis
+    container_name: redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+    networks:
+      - prod      
+    expose:
+      - '6379'    
+
+  app1:
+    build:
+      dockerfile: ./docker/traning-oauth-go.Dockerfile
+      context: .
+    image: golang
+    container_name: app1
+    ports:
+      - "8082"
+    networks:
+      - prod
+    depends_on: 
+      - redis
+  
+
+networks:
+  prod:
+    driver: bridge

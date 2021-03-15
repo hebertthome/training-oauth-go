@@ -1,0 +1,25 @@
+bind: :8082
+
+memcached:
+  size: 18
+
+logger:
+  provider: "logrus"
+  level: 13
+  format: "text"
+  out: "stdout"
+
+redis:
+  # go-redis:
+  #   addresses: 
+  #     - 
+  #       "redis": ":6379"
+  #   ttlInSeconds: 120
+  redigo:
+    address: "localhost:6379"
+    ttlInSeconds: 120
+    expireCount: 10
+
+auth:
+  clientID: "id"
+  clientSecret: "secret"

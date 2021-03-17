@@ -12,7 +12,6 @@ import (
 )
 
 type goRD struct {
-	LcCache
 	conf  config.GoRedisConfig
 	log   logger.Logger
 	cache *cache.Cache

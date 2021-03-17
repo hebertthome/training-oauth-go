@@ -1,8 +1,10 @@
 package handlers
 
 import (
+	"encoding/base64"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -13,26 +15,20 @@ import (
 )
 
 func Authenticate(ctx *context.AppContext, w http.ResponseWriter, r *http.Request) (int, error) {
-	// Read attribute 'client-id' on query string
-	id, ok := r.URL.Query()["client-id"]
-	if !ok || len(id[0]) < 1 {
+	// Read attribute '(Basic) Authorization' on header
+	a := strings.SplitN(r.Header.Get("Authorization"), " ", 2)
+	if len(a) != 2 || a[0] != "Basic" {
 		ctx.Logger.Info("Authenticate",
-			logger.String("client-id", "Not found"),
+			logger.String("(Basic) Authentication", "Not found"),
 		)
-		return http.StatusUnauthorized, fmt.Errorf("client-id not found")
+		return http.StatusUnauthorized, fmt.Errorf("(Basic) Authentication not found")
 	}
-	// Read attribute 'client-secret' on query string
-	secret, ok := r.URL.Query()["client-secret"]
-	if !ok || len(secret[0]) < 1 {
-		ctx.Logger.Info("Authenticate",
-			logger.String("client-secret", "Not found"),
-		)
-		return http.StatusUnauthorized, fmt.Errorf("client-secret not found")
-	}
+	payload, _ := base64.StdEncoding.DecodeString(a[1])
+	pair := strings.SplitN(string(payload), ":", 2)
 	// Load static credentials :)
 	auth := config.Get().Auth
 	// Compare credetionais
-	if id[0] != auth.ClientID || secret[0] != auth.ClientSecret {
+	if pair[0] != auth.ClientID || pair[1] != auth.ClientSecret {
 		ctx.Logger.Info("Authenticate",
 			logger.String("credentials", "Wrong!"),
 		)
@@ -40,10 +36,13 @@ func Authenticate(ctx *context.AppContext, w http.ResponseWriter, r *http.Reques
 	}
 	out := uuid.New()
 	// Write auth token on cache
-	ctx.Cache.Set(out.String(), redis.LcCached{ID: id[0], Count: 0})
+	ctx.Cache.Set(out.String(), redis.LcCached{ID: pair[0], Count: 0})
+	ctx.Logger.Info("Authenticate",
+		logger.String("Token", out.String()),
+	)
 	// Build response
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.Write([]byte(fmt.Sprintf("{\"token\": \"%s\"}", out.String())))
+	w.Write([]byte(fmt.Sprintf("{\"access_token\": \"%s\"}", out.String())))
 	ctx.Logger.Info("Authenticate",
 		logger.String("token", "Success generated"),
 	)

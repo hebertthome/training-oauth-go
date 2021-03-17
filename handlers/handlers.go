@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
+	"strings"
 
 	"bitbucket.org/hebertthome/traning-oauth-go/context"
 	"bitbucket.org/hebertthome/traning-oauth-go/logger"
@@ -43,12 +45,16 @@ func (ah AppHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (ah AppHandler) authorize(w http.ResponseWriter, r *http.Request) error {
-	// Check header attribute named 'Authorize'
-	auth := r.Header.Get("Authorize")
-	if len(auth) < 1 {
-		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
-		return errors.New("Header(Authorize) not found!")
+	// Read attribute '(Bearer) Authorization' on header
+	a := strings.SplitN(r.Header.Get("Authorization"), " ", 2)
+	if len(a) != 2 || a[0] != "Bearer" {
+		ah.C.Logger.Info("Authenticate",
+			logger.String("(Bearer) Authorization", "Not found"),
+		)
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return fmt.Errorf("(Bearer) Authorization not found")
 	}
+	auth := a[1]
 	ah.C.Logger.Debug("Authorize",
 		logger.String("Cache(key)", auth),
 	)
@@ -56,9 +62,9 @@ func (ah AppHandler) authorize(w http.ResponseWriter, r *http.Request) error {
 	result, err := ah.C.Cache.Get(auth)
 	if err != nil {
 		ah.C.Logger.Error("Authorize",
-			logger.Struct("Cache(key)", err),
+			logger.Struct("Cache(key) error", err),
 		)
-		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return errors.New("Authorization fail!")
 	}
 

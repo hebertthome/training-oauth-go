@@ -11,7 +11,6 @@ import (
 )
 
 type rdgo struct {
-	LcCache
 	conf config.RedigoConfig
 	log  logger.Logger
 }
